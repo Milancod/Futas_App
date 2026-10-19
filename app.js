@@ -57,7 +57,7 @@ function defaults() {
     ov: {},     // edzés-felülírások: { [id]: { date, treadmill, skipped } }
     runs: [],   // rögzített futások
     nic: { days: {}, cost: 0, cravings: {}, notes: {}, lastUse: null, kind: 'pouch', perDay: 10 },
-    med: { target: 10, sessions: [] },
+    med: { target: 10, sessions: [], favs: [] },
     read: { target: 30, sessions: [], books: [], current: null }
   };
 }
@@ -776,6 +776,7 @@ const MED_TYPES = [
   ['Hála', 'Gondolj végig 3 dolgot, amiért ma hálás vagy. Időzz el mindegyiknél, és érezd is a hálát.'],
   ['Vizualizáció: a befutó', 'Képzeld el a maraton utolsó kilométerét: a tömeget, a lábad érzetét, ahogy átfutsz a célvonalon. Éld át minden részletét.'],
   ['Sóvárgás meglovaglása', 'Ha jön a nikotin utáni vágy, ne harcolj ellene. Figyeld meg, hol érzed a testedben, és nézd, ahogy hullámként felerősödik, majd elhalványul.'],
+  ['Vezetett meditáció', 'Egy magyar nyelvű vezetett meditáció YouTube-ról vagy appból.'],
   ['Egyéb', 'Bármilyen gyakorlat, vezetett meditáció appból vagy YouTube-ról.']
 ];
 function medSuggestion(date) {
@@ -802,6 +803,7 @@ function viewMed() {
     <div class="stat"><b>${medStreak()}</b><span>napos sorozat</span></div>
     <div class="stat"><b>${total}</b><span>összes perc</span></div></div>
     <div class="btns"><button class="btn" onclick="openMedTimer()">⏱ Időzítő</button><button class="btn" onclick="openMedForm()">✎ Kézi rögzítés</button></div>
+    ${guidedHtml()}
     <h2>Naptár</h2><div class="card">${calendar(10, (d, isT, fut) => {
       const m = S.med.sessions.filter(x => x.date === d).reduce((a, x) => a + x.min, 0);
       return `<div class="${m >= S.med.target ? 'lvl2' : m ? 'lvl1' : ''} ${isT ? 'today' : ''} ${fut ? 'future' : ''}">${parse(d).getDate()}</div>`;
@@ -834,6 +836,47 @@ function delMed(id) {
   S.med.sessions = S.med.sessions.filter(s => s.id !== id); save(); closeSheet(); render();
 }
 
+/* Vezetett meditációk: magyar YouTube-keresések témánként + saját kedvencek */
+const GUIDED = [
+  ['🌅', 'Reggeli ébredés', 'reggeli vezetett meditáció magyarul', '5-10 perc'],
+  ['😮‍💨', 'Stressz és szorongás oldása', 'vezetett meditáció stressz szorongás oldására magyarul', '10-15 perc'],
+  ['🌬️', 'Légzőgyakorlat', 'vezetett légzőgyakorlat meditáció magyarul', '5-10 perc'],
+  ['🧍', 'Testpásztázás', 'testpásztázás vezetett meditáció magyarul', '10-20 perc'],
+  ['🚭', 'Leszokás, sóvárgás kezelése', 'vezetett meditáció leszokás sóvárgás függőség magyarul', '10 perc'],
+  ['💪', 'Önbizalom és motiváció', 'vezetett meditáció önbizalom motiváció magyarul', '10 perc'],
+  ['🏃', 'Futás utáni relaxáció', 'jóga nidra relaxáció magyarul', '15-30 perc'],
+  ['🌙', 'Elalvás előtt', 'elalvást segítő vezetett meditáció magyarul', '15-30 perc']
+];
+const ytSearch = q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+function guidedHtml() {
+  const favs = S.med.favs || [];
+  return `<h2>Vezetett meditációk</h2><div class="card list">
+    <div class="small muted" style="margin-bottom:4px">Koppints egy témára: megnyílnak a magyar nyelvű vezetett meditációk a YouTube-on. Ha találsz egy jót, mentsd el a kedvenceid közé.</div>
+    ${GUIDED.map(([ic, name, q, len]) => `<a class="item" href="${ytSearch(q)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
+      <div class="row"><div style="font-size:22px">${ic}</div><div><b>${name}</b><div class="small muted">${len}</div></div></div><span class="muted">↗</span></a>`).join('')}</div>
+    <h2>Kedvenc meditációim</h2><div class="card list">
+    ${favs.length ? favs.map(f => `<div class="item"><a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;flex:1"><b>${esc(f.title)}</b><div class="small muted">Megnyitás ↗</div></a>
+      <button class="btn sm" onclick="openMedForm(null,{type:'Vezetett meditáció',note:${esc(JSON.stringify(f.title))}})">✓ Kész</button>
+      <button class="btn sm" onclick="delFav('${f.id}')">×</button></div>`).join('')
+      : '<div class="small muted">Még nincs kedvenced. A YouTube-on a Megosztás → Link másolása gombbal kimásolhatod a videó linkjét.</div>'}
+    <button class="btn ghost" style="margin-top:10px" onclick="openFavForm()">+ Kedvenc hozzáadása</button></div>`;
+}
+function openFavForm() {
+  openSheet(`<h2 style="margin-top:0">Kedvenc meditáció</h2>
+    <label>Link (YouTube vagy bármi)</label><input id="fvUrl" inputmode="url" placeholder="https://youtu.be/...">
+    <label>Név</label><input id="fvTitle" placeholder="pl. 10 perces esti meditáció">
+    <button class="btn primary" style="margin-top:14px" onclick="saveFav()">Mentés</button>`);
+}
+function saveFav() {
+  const url = $('#fvUrl').value.trim(), title = $('#fvTitle').value.trim() || 'Vezetett meditáció';
+  if (!/^https?:\/\//i.test(url)) { toast('Másold be a teljes linket (https://...)'); return; }
+  S.med.favs = [...(S.med.favs || []), { id: uid(), url, title }];
+  save(); closeSheet(); render(); toast('⭐ Elmentve');
+}
+function delFav(id) {
+  if (!confirm('Törlöd a kedvencek közül?')) return;
+  S.med.favs = (S.med.favs || []).filter(f => f.id !== id); save(); render();
+}
 /* Meditációs időzítő */
 let medTick = null, wakeLock = null, audio = null;
 function stopTimers() {
