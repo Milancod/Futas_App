@@ -43,7 +43,7 @@ const G_CLOSE_SLEEP = [
 ];
 
 const G_THEMES = [
-  { key: 'morning', icon: '🌅', name: 'Reggeli ébredés', len: 5, yt: 'reggeli vezetett meditáció magyarul', v: [
+  { key: 'morning', vids: [['51PReyxCgi4', '10 perces reggeli vezetett meditáció'], ['UySVMATH0ks', 'Reggeli meditáció 5 perc'], ['Ej1O7zuAxeM', 'Reggeli meditáció, hogy a napod csodálatos legyen'], ['q33RuIjLs-I', 'Boldogságra hangoló reggeli meditáció'], ['9E5rPFdMQyM', 'Reggeli relaxáció, meditáció ébredés után'], ['kEdPKzIuBQ0', 'Reggeli meditáció (teljes)']], icon: '🌅', name: 'Reggeli ébredés', len: 5, yt: 'reggeli vezetett meditáció magyarul', v: [
     ['Napindító légzés', [
       ['Képzeld el, hogy minden belégzéssel friss energia árad beléd, mint a reggeli napfény.', 8, F],
       ['Kilégzéskor engedd el az álmosságot és a nehézséget.', 8, F],
@@ -63,7 +63,7 @@ const G_THEMES = [
       ['A karjaid és a kezeid. Mozgasd meg finoman az ujjaidat.', 6, F],
       ['Végül a fejed és az arcod. Engedj meg egy halvány mosolyt.', 6, F]]]
   ] },
-  { key: 'stress', icon: '😮‍💨', name: 'Stressz és szorongás oldása', len: 10, yt: 'vezetett meditáció stressz szorongás oldására magyarul', v: [
+  { key: 'stress', vids: [['RxJ3ccv7Z0I', 'Szorongás és stresszoldó meditáció'], ['lKFoJPCOI60', 'Vezetett meditáció stressz és szorongás ellen'], ['dcG2zmJ42SI', 'Rövid, pihentető, feszültségoldó relaxáció'], ['BbiDKLoHObs', 'Meditáció a félelmek és szorongás feloldására (15 perc)'], ['T3AMh_4wpcU', 'Stresszoldó meditáció'], ['eB3sTdPnM3w', 'Stresszlevezető meditáció Kolozsi Mariannal'], ['3nVGFThqxcI', 'Relaxáció, kikapcsolódás, feltöltődés']], icon: '😮‍💨', name: 'Stressz és szorongás oldása', len: 10, yt: 'vezetett meditáció stressz szorongás oldására magyarul', v: [
     ['Hosszú kilégzés', [
       ['A stressz ellen az egyik leghatékonyabb eszköz a hosszú kilégzés. Lélegezz be négyig, és fújd ki hatig.', 3],
       ['Be... kettő, három, négy.', 1], ['Ki... kettő, három, négy, öt, hat.', 2],
@@ -91,7 +91,7 @@ const G_THEMES = [
       ['Szorítsd össze az arcod minden izmát.', 5],
       ['És lazíts. Engedd, hogy a feszültség kifolyjon belőled.', 15, F]]]
   ] },
-  { key: 'breath', icon: '🌬️', name: 'Légzőgyakorlat', len: 5, yt: 'vezetett légzőgyakorlat meditáció magyarul', v: [
+  { key: 'breath', vids: [['t3Jr8apvf90', 'Tudatos légzés (Dr. Perczel-Forintos Dóra)'], ['lOfRijShHQ4', 'Stresszoldó légzőgyakorlat'], ['ZqvasYX3Ivw', '4-7-8 légzéstechnika'], ['FHZs2D-zOnY', '5 perces vezetett meditáció kezdőknek'], ['ZNhqQH54-sQ', 'Wim Hof-módszer vezetett légzés'], ['7ElTtKJOPRA', 'Rövid vezetett meditáció kezdőknek']], icon: '🌬️', name: 'Légzőgyakorlat', len: 5, yt: 'vezetett légzőgyakorlat meditáció magyarul', v: [
     ['Négyszög légzés', [
       ['Most négyszög légzést gyakorolunk: négy ütem be, négy bent, négy ki, négy szünet.', 3],
       ['Be...', 4], ['Tartsd...', 4], ['Ki...', 4], ['Szünet...', 4],
@@ -114,7 +114,7 @@ const G_THEMES = [
       ['Ez a rekeszizom-légzés. Futás közben is ez segít, hogy több levegőhöz juss.', 25, F],
       ['Figyeld, ahogy a hasad lágyan emelkedik és süllyed.', 20, F]]]
   ] },
-  { key: 'body', icon: '🧍', name: 'Testpásztázás', len: 10, yt: 'testpásztázás vezetett meditáció magyarul', v: [
+  { key: 'body', vids: [['SzanpIzoft8', 'Testpásztázás (Dr. Perczel-Forintos Dóra)'], ['O6Mdz6_JYoE', 'Mindfulness meditáció: testpásztázás'], ['iI0Fz6enDig', 'Testpásztázás'], ['eBoPq-Vl7so', 'Testlazítás és szabad meditáció'], ['0PNwNSsvEcI', 'Gyógyító meditáció a testnek és a léleknek (10 perc)'], ['PMmpoO1FS9w', 'Bodyscan relaxáció']], icon: '🧍', name: 'Testpásztázás', len: 10, yt: 'testpásztázás vezetett meditáció magyarul', v: [
     ['Lábtól a fejig', [
       ['Most végighaladunk a testeden. Nem kell semmin változtatnod, csak figyeld meg az érzeteket.', 4],
       ['Vidd a figyelmed a lábfejedbe és a talpadba.', 10, F],
@@ -139,7 +139,7 @@ const G_THEMES = [
       ['Végül a nyakadat és a fejedet is betölti.', 10, F],
       ['Az egész tested lazán, melegen pihen.', 12, F]]]
   ] },
-  { key: 'quit', icon: '🚭', name: 'Leszokás, sóvárgás kezelése', len: 5, yt: 'vezetett meditáció leszokás sóvárgás függőség magyarul', v: [
+  { key: 'quit', vids: [['gm-orCXMXQE', 'Leszokás a dohányzásról vezetett meditációval'], ['bP1-JZAYd6s', 'Dohányzás elleni hypnorelax'], ['emDbGKm3ZFk', 'Leszokás: megerősítések'], ['wJBqJ8DB3tA', 'Szokj le akár 25 perc alatt'], ['Y5JqdFyxmds', 'Szokj le a dohányzásról (hipnózis, 1 óra)']], icon: '🚭', name: 'Leszokás, sóvárgás kezelése', len: 5, yt: 'vezetett meditáció leszokás sóvárgás függőség magyarul', v: [
     ['A hullám meglovaglása', [
       ['Ha most sóvárgást érzel, ne harcolj ellene. Csak figyeld meg.', 8, F],
       ['Hol érzed a testedben? A torkodban, a mellkasodban, a kezedben?', 10, F],
@@ -163,7 +163,7 @@ const G_THEMES = [
       ['O, mint okok: ismerd fel, mi történik benned. Unalom, stressz vagy csak megszokás?', 12, F],
       ['P, mint pozitív döntés: válassz valami jobbat. Igyál egy pohár vizet, vagy menj ki sétálni.', 10, F]]]
   ] },
-  { key: 'confidence', icon: '💪', name: 'Önbizalom és motiváció', len: 10, yt: 'vezetett meditáció önbizalom motiváció magyarul', v: [
+  { key: 'confidence', vids: [['nuuJZ_jcZlE', 'Önbizalom-növelő meditáció kezdőknek'], ['F4Ylm60wfz0', 'Ez tuti megnöveli az önbizalmad'], ['lEJC8oIB8zU', 'Jóga nidra: Ébredő erő, önbizalom'], ['3uCR7cC6sg0', 'Önbizalom és lelki egyensúly: állítások'], ['snXPnuHjLSo', 'Önbizalom hipnózis'], ['-16_yUZIhkw', 'Találd meg önmagad']], icon: '💪', name: 'Önbizalom és motiváció', len: 10, yt: 'vezetett meditáció önbizalom motiváció magyarul', v: [
     ['Az erőd forrása', [
       ['Idézz fel egy pillanatot, amikor büszke voltál magadra.', 12, F],
       ['Hol voltál? Mit éreztél? Éld át újra.', 15, F],
@@ -182,7 +182,7 @@ const G_THEMES = [
       ['Kedves vagyok magamhoz, akkor is, ha hibázok.', 10, F],
       ['Megérdemlem, hogy egészséges és boldog legyek.', 10, F]]]
   ] },
-  { key: 'recovery', icon: '🏃', name: 'Futás utáni relaxáció', len: 10, yt: 'jóga nidra relaxáció magyarul', v: [
+  { key: 'recovery', vids: [['SKxzev7TWtc', 'Yoga nidra: stresszoldó, pihentető relaxáció'], ['JGILUZBReCU', 'Yoga nidra: relaxált test, csendes tudat'], ['L3gnMgVsmVM', 'Jóga nidra: mély meditáció'], ['uC0Qwlz52S8', '15 perces öngyógyító meditáció'], ['oHZQN8YCBfw', '30 perces meditáció: belső béke, elengedés']], icon: '🏃', name: 'Futás utáni relaxáció', len: 10, yt: 'jóga nidra relaxáció magyarul', v: [
     ['Levezető pihenés', [
       ['Feküdj le, ha teheted, és tedd fel a lábad, ha jólesik.', 8, F],
       ['Érezd, ahogy a lábaidból kiárad a fáradtság a talajba.', 15, F],
@@ -203,7 +203,7 @@ const G_THEMES = [
       ['Az egész tested. Az egész tested együtt, nyugalomban.', 15, F],
       ['Ismételd el magadban a szándékodat.', 8, F]]]
   ] },
-  { key: 'sleep', icon: '🌙', name: 'Elalvás előtt', len: 15, sleep: true, yt: 'elalvást segítő vezetett meditáció magyarul', v: [
+  { key: 'sleep', vids: [['FabGjOSWUNk', 'Elalvást segítő vezetett esti meditáció'], ['Yd3GTnkoGgQ', 'Elalvás meditáció'], ['Y4bwckvQmSI', 'Meditáció a jó alvásért'], ['WE8M05ydAKU', 'Jó éjszakát! Elalvást segítő meditáció'], ['XOf_i1jwb0Q', 'Vezetett meditáció alváshoz'], ['hTtes0a1I4Q', 'Stresszoldó, alvást segítő meditáció'], ['E902bp8TdTM', 'Jóga nidra: Édes álom'], ['ofNHaB2mIO4', 'Mély alvás meditáció']], icon: '🌙', name: 'Elalvás előtt', len: 15, sleep: true, yt: 'elalvást segítő vezetett meditáció magyarul', v: [
     ['Elengedés', [
       ['Feküdj kényelmesen, és engedd, hogy az ágy megtartson.', 10, F],
       ['A nap véget ért. Bármi történt, most elengedheted.', 15, F],
@@ -273,7 +273,37 @@ function gpStop() {
   gp = null;
 }
 
+// Emberi hangú videók (YouTube), témánként naponta más
+function videoToday(theme, shift = 0) {
+  const ti = G_THEMES.indexOf(theme);
+  return theme.vids[(dayIndex(today()) + ti + shift) % theme.vids.length];
+}
+let vidShift = {};
 function openGuided(key) {
+  const theme = G_THEMES.find(t => t.key === key);
+  const [id, title] = videoToday(theme, vidShift[key] || 0);
+  const url = 'https://www.youtube.com/watch?v=' + id;
+  openSheet(`<span class="pill">${theme.icon} ${esc(theme.name)}</span>
+    <h2 style="margin:8px 0 2px">${esc(title)}</h2>
+    <div class="small muted">A mai videó ebben a témában. Holnap másik jön.</div>
+    <div style="position:relative;padding-top:56.25%;margin-top:12px;border-radius:14px;overflow:hidden;background:#000">
+      <iframe src="https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0" title="${esc(title)}" style="position:absolute;inset:0;width:100%;height:100%;border:0"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+    <div class="small muted" style="margin-top:8px">Ha a videó nem indul el itt, <a href="${url}" target="_blank" rel="noopener" style="color:var(--accent2)">nyisd meg a YouTube-on ↗</a></div>
+    <label>Hány percet meditáltál?</label><input id="vMin" inputmode="numeric" value="${theme.len}">
+    <div class="btns"><button class="btn primary" id="vDone">✓ Kész, rögzítem</button><button class="btn" id="vNext">↻ Másikat kérek</button></div>
+    <button class="btn ghost" style="margin-top:8px" onclick="openGuidedTTS('${key}')">Nincs net? Szöveges változat</button>`, () => {
+    $('#vDone').onclick = () => {
+      const min = parseInt($('#vMin').value, 10);
+      if (!(min > 0)) { toast('Add meg a perceket'); return; }
+      S.med.sessions.push({ id: uid(), date: today(), min, type: 'Vezetett meditáció', note: `${theme.name}: ${title}` });
+      save(); closeSheet(); render(); toast('🧘 Elmentve');
+    };
+    $('#vNext').onclick = () => { vidShift[key] = (vidShift[key] || 0) + 1; openGuided(key); };
+  });
+}
+
+function openGuidedTTS(key) {
   const theme = G_THEMES.find(t => t.key === key);
   const g = guidedToday(theme);
   let minutes = theme.len;

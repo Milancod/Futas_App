@@ -848,9 +848,9 @@ function guidedPick() {
 function guidedHtml() {
   const favs = S.med.favs || [];
   return `<h2>Vezetett meditációk</h2><div class="card list">
-    <div class="small muted" style="margin-bottom:4px">Magyar hangon vezetlek végig, az appon belül. Minden témában naponta más gyakorlat jön.</div>
+    <div class="small muted" style="margin-bottom:4px">Valódi, emberi hangú magyar vezetett meditációk, az appon belül lejátszva. Minden témában naponta másik videó jön.</div>
     ${G_THEMES.map(t => `<div class="item" onclick="openGuided('${t.key}')" style="cursor:pointer">
-      <div class="row"><div style="font-size:22px">${t.icon}</div><div><b>${t.name}</b><div class="small muted">Ma: ${esc(guidedToday(t).title)} · ${t.len} perc</div></div></div><span class="pill">▶</span></div>`).join('')}</div>
+      <div class="row"><div style="font-size:22px">${t.icon}</div><div><b>${t.name}</b><div class="small muted">Ma: ${esc(videoToday(t)[1])}</div></div></div><span class="pill">▶</span></div>`).join('')}</div>
     <details class="card"><summary style="cursor:pointer"><b>Még több a YouTube-on ↗</b></summary><div class="list" style="margin-top:6px">
     ${G_THEMES.map(t => `<a class="item" href="${ytSearch(t.yt)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span>${t.icon} ${t.name}</span><span class="muted">↗</span></a>`).join('')}</div></details>
     <h2>Kedvenc meditációim</h2><div class="card list">
