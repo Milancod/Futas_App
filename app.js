@@ -56,7 +56,7 @@ function defaults() {
     },
     ov: {},     // edzés-felülírások: { [id]: { date, treadmill, skipped } }
     runs: [],   // rögzített futások
-    nic: { days: {}, cost: 0, cravings: {}, notes: {} },
+    nic: { days: {}, cost: 0, cravings: {}, notes: {}, lastUse: null, kind: 'pouch', perDay: 10 },
     med: { target: 10, sessions: [] }
   };
 }
@@ -326,6 +326,8 @@ function viewToday() {
   if (nicDay === 'clean') html += `<div class="row"><div style="font-size:30px">✅</div><div><b>Ma nikotinmentes voltál!</b><div class="small muted">${st} napos sorozat. Ezzel ma is tettél az egészségedért és a futásodért.</div></div></div>`;
   else if (nicDay === 'used') html += `<div class="row"><div style="font-size:30px">🌱</div><div><b>Nem baj, holnap új nap.</b><div class="small muted">Egy botlás nem nullázza le a fejlődésed. Mi váltotta ki? Írd le a Nikotin fülön.</div></div></div>`;
   else html += `<div class="muted small">Jelöld be a nap végén, hogy ma nikotinmentes voltál-e.</div>`;
+  const since = nicSince();
+  if (since) { const x = fmtSince(Date.now() - since); html += `<div class="small" style="margin-top:10px">⏱ <b>${x.d} nap ${x.h} óra</b> nikotin nélkül · ${NIC_HEALTH.filter(h => (!h[2] || h[2].includes(S.nic.kind)) && (Date.now() - since) / 36e5 >= h[0]).length} egészségügyi előny elérve</div>`; }
   html += `<div class="btns"><button class="btn ${nicDay === 'clean' ? 'ok' : ''}" onclick="setNic('${t}','clean')">✅ Nikotinmentes</button>
     <button class="btn ${nicDay === 'used' ? 'bad' : ''}" onclick="setNic('${t}','used')">Nikotinoztam</button></div>
     <button class="btn ghost" style="margin-top:8px" onclick="openSOS()">🆘 Sóvárgás van – segíts!</button></div>`;
@@ -589,6 +591,7 @@ function nicBest() {
 }
 function setNic(date, val) {
   if (S.nic.days[date] === val) delete S.nic.days[date]; else S.nic.days[date] = val;
+  if (S.nic.days[date] === 'used' && date === today()) S.nic.lastUse = Date.now();
   save(); render();
   if (S.nic.days[date] === 'clean') {
     const st = nicStreak();
@@ -605,20 +608,103 @@ function calendar(weeks, cellFn) {
   }
   return h + '</div>';
 }
+/* Élő egészség-számláló: idő az utolsó nikotin óta és a regeneráció lépései */
+const NIC_KINDS = { pouch: ['Nikotinpárna / snüssz', 'párna'], vape: ['Vape / e-cigi', 'slukk-alkalom'], cig: ['Cigaretta', 'szál cigi'], other: ['Egyéb', 'adag'] };
+// [óra, szöveg, mely formákra igaz (üres = mindre)]
+const NIC_HEALTH = [
+  [1 / 3, 'A pulzusod és a vérnyomásod visszatér a nikotin előtti szintre.'],
+  [2, 'A nikotin szintje a véredben a felére csökkent.'],
+  [12, 'A vér szén-monoxid-szintje normalizálódik, több oxigén jut az izmaidhoz.', ['cig']],
+  [24, 'A nikotin nagy része kiürült, megszűnnek a nikotin okozta adrenalin-löketek.'],
+  [48, 'Az íz- és szaglóidegek regenerálódni kezdenek, jobban érzed az ízeket.', ['cig', 'vape']],
+  [72, 'A szervezeted nikotinmentes. Az elvonási tünetek csúcsa után innen enyhülnek.'],
+  [24 * 14, 'Az ínyed és a szájnyálkahártyád gyógyulni kezd, csökken az irritáció.', ['pouch']],
+  [24 * 14, 'Javul a vérkeringésed, az ereid kevésbé szűkülnek: a futás könnyebbnek érződik.'],
+  [24 * 30, 'A nikotinreceptorok száma normalizálódik, a sóvárgás ritka és gyenge.'],
+  [24 * 90, 'A tüdőfunkciód javul, kevesebb a köhögés és a légszomj, nő az állóképességed.', ['cig', 'vape']],
+  [24 * 90, 'Stabilabb a hangulatod és az alvásod, kevesebb a nap közbeni ingadozás.'],
+  [24 * 365, 'A szív- és érrendszeri betegségek kockázata jelentősen csökkent.']
+];
+function nicSince() {
+  if (S.nic.lastUse) return S.nic.lastUse;
+  const st = nicStreak();
+  if (!st) return null;
+  let d = new Date();
+  if (S.nic.days[iso(d)] !== 'clean') d = addDays(d, -1);
+  return parse(iso(addDays(d, -(st - 1)))).getTime();
+}
+function fmtSince(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return { d, h, m, s: s % 60 };
+}
+function fmtHours(h) {
+  if (h < 1) return Math.round(h * 60) + ' perc';
+  if (h < 48) return Math.round(h) + ' óra';
+  if (h < 24 * 30) return Math.round(h / 24) + ' nap';
+  if (h < 24 * 365) return Math.round(h / 24 / 30) + ' hónap';
+  return '1 év';
+}
+function nicHealthHtml() {
+  const since = nicSince();
+  if (!since) return `<div class="card hero" style="margin-top:12px;text-align:center"><b>Mikor nikotinoztál utoljára?</b>
+    <div class="small" style="color:#d8cffc;margin:6px 0 12px">Innentől számolom, mennyit nyert az egészséged.</div>
+    <input type="datetime-local" id="nicLast" style="margin-bottom:8px"><div class="btns">
+    <button class="btn primary" onclick="setLastUse($('#nicLast').value)">Mentés</button><button class="btn" onclick="setLastUse('now')">Most kezdem</button></div></div>`;
+  const hrs = (Date.now() - since) / 36e5;
+  const t = fmtSince(Date.now() - since);
+  const unit = NIC_KINDS[S.nic.kind] || NIC_KINDS.other;
+  const avoided = Math.floor(hrs / 24 * (S.nic.perDay || 0));
+  const money = Math.floor(hrs / 24 * (S.nic.cost || 0));
+  const items = NIC_HEALTH.filter(x => !x[2] || x[2].includes(S.nic.kind));
+  const done = items.filter(x => hrs >= x[0]).length;
+  return `<div class="card hero" style="margin-top:12px;text-align:center">
+    <div class="small" style="color:#d8cffc">Nikotin nélkül már</div>
+    <div id="nicClock" style="display:flex;justify-content:center;gap:14px;margin:8px 0">${[['d', 'nap'], ['h', 'óra'], ['m', 'perc'], ['s', 'mp']].map(([k, l]) => `<div><div data-k="${k}" style="font-size:36px;font-weight:800;font-variant-numeric:tabular-nums">${t[k]}</div><div class="small" style="color:#d8cffc">${l}</div></div>`).join('')}</div>
+    <div class="small" style="color:#d8cffc">${done} / ${items.length} egészségügyi előny elérve</div></div>
+    <div class="grid2"><div class="stat"><b>${avoided.toLocaleString('hu-HU')}</b><span>elkerült ${unit[1]}</span></div>
+    <div class="stat"><b>${money ? money.toLocaleString('hu-HU') + ' Ft' : '–'}</b><span>megspórolva${S.nic.cost ? '' : ' (add meg lent az árat)'}</span></div></div>
+    <h2>Mit tettél az egészségedért</h2><div class="card">${items.map(([h, txt]) => {
+      const pct = Math.min(100, hrs / h * 100), ok = pct >= 100;
+      return `<div class="milestone ${ok ? 'reached' : ''}"><div class="dot">${ok ? '✓' : ''}</div><div style="flex:1">
+        <div class="row between"><b>${fmtHours(h)}</b><span class="small ${ok ? 'c-easy' : 'muted'}">${ok ? 'Megvan!' : Math.floor(pct) + '%'}</span></div>
+        <div class="small ${ok ? '' : 'muted'}">${txt}</div>${ok ? '' : `<div class="bar" style="margin-top:6px;height:6px"><i style="width:${pct}%"></i></div>`}</div></div>`;
+    }).join('')}
+    <div class="small muted" style="margin-top:10px">Tájékoztató jellegű, főleg a dohányzásról és nikotinról való leszokás kutatásai alapján.</div></div>
+    <div class="btns"><button class="btn bad" onclick="if(confirm('Újraindítod a számlálót most?'))setLastUse('now',true)">Most nikotinoztam</button>
+    <button class="btn" onclick="editLastUse()">Időpont módosítása</button></div>`;
+}
+function setLastUse(v, used) {
+  const ms = v === 'now' ? Date.now() : new Date(v).getTime();
+  if (!ms || ms > Date.now()) { toast('Adj meg egy múltbeli időpontot'); return; }
+  S.nic.lastUse = ms;
+  if (used) S.nic.days[today()] = 'used';
+  save(); closeSheet(true); render();
+}
+function editLastUse() {
+  const d = new Date(nicSince() || Date.now());
+  const v = `${iso(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  openSheet(`<h2 style="margin-top:0">Utolsó nikotin időpontja</h2><input type="datetime-local" id="nicLast2" value="${v}">
+    <button class="btn primary" style="margin-top:12px" onclick="setLastUse($('#nicLast2').value)">Mentés</button>`);
+}
+setInterval(() => {
+  const el = document.getElementById('nicClock');
+  if (!el) return;
+  const since = nicSince();
+  if (!since) return;
+  const t = fmtSince(Date.now() - since);
+  el.querySelectorAll('[data-k]').forEach(x => { x.textContent = t[x.dataset.k]; });
+}, 1000);
 function viewNic() {
   const st = nicStreak(), best = nicBest();
   const clean = Object.values(S.nic.days).filter(v => v === 'clean').length;
   const resisted = Object.values(S.nic.cravings).reduce((a, b) => a + b, 0);
   const t = today();
   const next = NIC_MILESTONES.find(m => m[0] > st);
-  let html = `<div class="card hero" style="margin-top:12px;text-align:center">
-    <div class="small" style="color:#d8cffc">Jelenlegi sorozat</div>
-    <div style="font-size:56px;font-weight:800;line-height:1.1">${st}</div><div>nikotinmentes nap</div>
-    ${next ? `<div class="small" style="color:#d8cffc;margin-top:8px">Még ${next[0] - st} nap a következő mérföldkőig</div>` : ''}</div>
-    <div class="grid3"><div class="stat"><b>${best}</b><span>leghosszabb sorozat</span></div>
-    <div class="stat"><b>${clean}</b><span>tiszta nap összesen</span></div>
+  let html = nicHealthHtml() + `<h2>Napi sorozat</h2>
+    <div class="grid3"><div class="stat"><b>${st}</b><span>jelenlegi sorozat (nap)</span></div><div class="stat"><b>${best}</b><span>leghosszabb sorozat</span></div>
     <div class="stat"><b>${resisted}</b><span>legyőzött sóvárgás</span></div></div>
-    ${S.nic.cost ? `<div class="card" style="margin-top:12px"><b>💰 ${Math.round(clean * S.nic.cost).toLocaleString('hu-HU')} Ft</b> <span class="muted small">megspórolva eddig</span></div>` : ''}
+    ${next ? `<div class="small muted" style="margin-top:8px">Még ${next[0] - st} nap a következő mérföldkőig. Összesen ${clean} tiszta napot jelöltél.</div>` : ''}
     <div class="btns"><button class="btn ${S.nic.days[t] === 'clean' ? 'ok' : ''}" onclick="setNic('${t}','clean')">✅ Ma nikotinmentes</button>
     <button class="btn ${S.nic.days[t] === 'used' ? 'bad' : ''}" onclick="setNic('${t}','used')">Ma nikotinoztam</button></div>
     <button class="btn primary" style="margin-top:8px" onclick="openSOS()">🆘 Sóvárgás van – segíts!</button>
@@ -627,9 +713,11 @@ function viewNic() {
       const v = S.nic.days[d];
       return `<div class="${v || ''} ${isT ? 'today' : ''} ${fut ? 'future' : ''}" ${fut ? '' : `onclick="cycleNic('${d}')"`}>${parse(d).getDate()}</div>`;
     })}<div class="small muted" style="margin-top:8px">Koppints egy napra a visszamenőleges jelöléshez (zöld = tiszta, piros = nikotin, üres = nincs adat).</div></div>
-    <h2>Mérföldkövek</h2><div class="card">${NIC_MILESTONES.map(([d, txt]) => `<div class="milestone ${st >= d ? 'reached' : ''}"><div class="dot">${st >= d ? '✓' : ''}</div><div><b>${d >= 365 ? '1 év' : d >= 30 ? Math.round(d / 30) + ' hónap' : d + ' nap'}</b><div class="small muted">${txt}</div></div></div>`).join('')}</div>
-    <h2>Beállítás</h2><div class="card"><label>Mennyit költöttél naponta nikotinra? (Ft)</label>
-    <input inputmode="numeric" value="${S.nic.cost || ''}" placeholder="pl. 1500" onchange="S.nic.cost=+this.value||0;save();render()"></div>`;
+    <h2>Beállítás</h2><div class="card"><label>Milyen formában használtál nikotint?</label>
+    <select onchange="S.nic.kind=this.value;save();render()">${Object.entries(NIC_KINDS).map(([k, v]) => `<option value="${k}" ${S.nic.kind === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+    <div class="grid2"><div><label>Napi mennyiség (${(NIC_KINDS[S.nic.kind] || NIC_KINDS.other)[1]})</label>
+    <input inputmode="numeric" value="${S.nic.perDay || ''}" placeholder="pl. 10" onchange="S.nic.perDay=+this.value||0;save();render()"></div>
+    <div><label>Napi költség (Ft)</label><input inputmode="numeric" value="${S.nic.cost || ''}" placeholder="pl. 1500" onchange="S.nic.cost=+this.value||0;save();render()"></div></div></div>`;
   return html;
 }
 function cycleNic(d) {
