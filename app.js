@@ -57,7 +57,8 @@ function defaults() {
     ov: {},     // edzés-felülírások: { [id]: { date, treadmill, skipped } }
     runs: [],   // rögzített futások
     nic: { days: {}, cost: 0, cravings: {}, notes: {}, lastUse: null, kind: 'pouch', perDay: 10 },
-    med: { target: 10, sessions: [] }
+    med: { target: 10, sessions: [] },
+    read: { target: 30, sessions: [], books: [], current: null }
   };
 }
 let S = load();
@@ -67,7 +68,7 @@ function load() {
     const x = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (x) return {
       settings: { ...d.settings, ...x.settings }, ov: x.ov || {}, runs: x.runs || [],
-      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }
+      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }, read: { ...d.read, ...x.read }
     };
   } catch (e) {}
   return d;
@@ -245,7 +246,7 @@ function weekDone(week) {
 /* ---------- UI alapok ---------- */
 let TAB = 'today';
 let planWeek = null;
-const TITLES = { today: 'Ma', plan: 'Edzésterv', runs: 'Futások', nic: 'Nikotinmentesen', med: 'Meditáció' };
+const TITLES = { today: 'Ma', plan: 'Edzésterv', runs: 'Futások', nic: 'Nikotinmentesen', med: 'Meditáció', read: 'Olvasás' };
 
 function toast(msg) {
   const t = document.createElement('div');
@@ -280,7 +281,7 @@ function render() {
   $('#subtitle').textContent = fmtDateLong(today());
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === TAB));
   const m = $('#main');
-  m.innerHTML = { today: viewToday, plan: viewPlan, runs: viewRuns, nic: viewNic, med: viewMed }[TAB]();
+  m.innerHTML = { today: viewToday, plan: viewPlan, runs: viewRuns, nic: viewNic, med: viewMed, read: viewRead }[TAB]();
   if (TAB === 'plan') enableDrag(m);
 }
 function go(tab) { TAB = tab; window.scrollTo(0, 0); render(); }
@@ -340,6 +341,14 @@ function viewToday() {
     <div class="bar" style="margin-top:10px"><i style="width:${Math.min(100, medMin / S.med.target * 100)}%"></i></div>
     <div class="btns"><button class="btn primary" onclick="openMedTimer()">▶ Indítás</button><button class="btn" onclick="openMedForm()">Rögzítés</button></div></div>`;
 
+  // Olvasás
+  const readMin = readMinutes(t), book = curBook();
+  html += `<h2>Olvasás</h2><div class="card">
+    <div><b>${readMin >= S.read.target ? '📚 Megvan a mai olvasás!' : `Mai cél: ${S.read.target} perc`}</b>
+    <div class="small muted">Ma eddig: ${readMin} perc${book ? ` · ${esc(book.title)}` : ''}</div></div>
+    <div class="bar" style="margin-top:10px"><i style="width:${Math.min(100, readMin / S.read.target * 100)}%"></i></div>
+    <div class="btns"><button class="btn primary" onclick="openReadTimer()">▶ Olvasás indítása</button><button class="btn" onclick="openReadForm()">Rögzítés</button></div></div>`;
+
   // Heti áttekintés
   html += `<h2>A heted</h2><div class="card"><div class="grid7" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">`;
   for (let i = 0; i < 7; i++) {
@@ -348,13 +357,15 @@ function viewToday() {
     const ran = S.runs.some(r => r.date === d);
     const nd = S.nic.days[d];
     const md = S.med.sessions.some(x => x.date === d);
+    const rd = readMinutes(d) >= S.read.target;
     html += `<div style="padding:6px 0;border-radius:12px;${d === t ? 'background:var(--card2)' : ''}">
       <div class="small ${d === t ? '' : 'muted'}"><b>${DAY_SHORT[i]}</b></div>
       <div style="font-size:15px;margin-top:4px">${ran ? '✅' : ws.length ? `<span class="c-${COLOR[ws[0].type]}">●</span>` : '·'}</div>
       <div style="font-size:11px">${nd === 'clean' ? '🚭' : nd === 'used' ? '•' : '&nbsp;'}</div>
-      <div style="font-size:11px">${md ? '🧘' : '&nbsp;'}</div></div>`;
+      <div style="font-size:11px">${md ? '🧘' : '&nbsp;'}</div>
+      <div style="font-size:11px">${rd ? '📚' : '&nbsp;'}</div></div>`;
   }
-  html += `</div><div class="small muted" style="margin-top:8px">● tervezett futás · ✅ lefutva · 🚭 nikotinmentes · 🧘 meditáltál</div></div>`;
+  html += `</div><div class="small muted" style="margin-top:8px">● tervezett futás · ✅ lefutva · 🚭 nikotinmentes · 🧘 meditáltál · 📚 meglett a napi olvasás</div></div>`;
   return html;
 }
 
@@ -827,6 +838,7 @@ function delMed(id) {
 let medTick = null, wakeLock = null, audio = null;
 function stopTimers() {
   clearInterval(medTick); medTick = null;
+  clearInterval(readTick); readTick = null;
   clearTimeout(breathTimer); breathTimer = null;
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
 }
@@ -886,6 +898,139 @@ function openMedTimer(type) {
       }, 250);
     };
     $('#tStop').onclick = () => { if (running) left = (endAt - Date.now()) / 1000; finish(false); };
+  });
+}
+
+/* ---------- OLVASÁS ---------- */
+let readTick = null;
+const readMinutes = date => S.read.sessions.filter(x => x.date === date).reduce((a, x) => a + x.min, 0);
+const curBook = () => S.read.books.find(b => b.id === S.read.current && !b.done) || null;
+const bookPages = id => S.read.sessions.filter(x => x.book === id).reduce((a, x) => a + (x.pages || 0), 0);
+function readStreak() {
+  let d = new Date(), n = 0;
+  if (readMinutes(iso(d)) < S.read.target) d = addDays(d, -1);
+  while (readMinutes(iso(d)) >= S.read.target) { n++; d = addDays(d, -1); }
+  return n;
+}
+function viewRead() {
+  const t = today(), min = readMinutes(t), book = curBook();
+  const total = S.read.sessions.reduce((a, x) => a + x.min, 0);
+  const pages = S.read.sessions.reduce((a, x) => a + (x.pages || 0), 0);
+  const list = [...S.read.sessions].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const books = [...S.read.books].sort((a, b) => a.done - b.done);
+  const bTitle = id => (S.read.books.find(b => b.id === id) || {}).title || '';
+  return `<div class="card hero" style="margin-top:12px">
+    <div class="small" style="color:#d8cffc">Mai olvasás</div>
+    <div class="row between"><h2 style="margin:4px 0">${min} / ${S.read.target} perc</h2><div style="font-size:34px">${min >= S.read.target ? '🏆' : '📖'}</div></div>
+    <div class="bar"><i style="width:${Math.min(100, min / S.read.target * 100)}%"></i></div>
+    ${book ? `<div class="small" style="margin-top:10px;color:#d8cffc">Most olvasod: <b>${esc(book.title)}</b>${book.pages ? ` · ${bookPages(book.id)} / ${book.pages} oldal` : ''}</div>` : ''}
+    <div class="btns"><button class="btn primary" onclick="openReadTimer()">▶ Olvasás indítása</button></div></div>
+    <div class="grid3"><div class="stat"><b>${readStreak()}</b><span>napos sorozat</span></div>
+    <div class="stat"><b>${(Math.round(total / 6) / 10).toLocaleString('hu-HU')}</b><span>összes óra</span></div>
+    <div class="stat"><b>${pages}</b><span>oldal összesen</span></div></div>
+    <button class="btn" style="margin-top:10px" onclick="openReadForm()">✎ Olvasás kézi rögzítése</button>
+    <h2>Könyveim</h2><div class="card list">${books.length ? books.map(b => {
+      const p = bookPages(b.id), pct = b.pages ? Math.min(100, p / b.pages * 100) : 0;
+      return `<div class="item" style="display:block"><div class="row between"><div><b>${esc(b.title)}</b>${b.author ? ` <span class="small muted">· ${esc(b.author)}</span>` : ''}
+        <div class="small muted">${b.done ? '✅ Kiolvasva' : b.id === S.read.current ? '📖 Most olvasom' : 'Polcon'}${b.pages ? ` · ${p} / ${b.pages} oldal` : ''}</div></div>
+        <button class="btn sm" onclick="openBookForm('${b.id}')">✎</button></div>
+        ${b.pages && !b.done ? `<div class="bar" style="margin-top:8px;height:6px"><i style="width:${pct}%"></i></div>` : ''}</div>`;
+    }).join('') : '<div class="small muted">Add hozzá a könyvet, amit most olvasol.</div>'}
+    <button class="btn ghost" style="margin-top:10px" onclick="openBookForm()">+ Új könyv</button></div>
+    <h2>Naptár</h2><div class="card">${calendar(10, (d, isT, fut) => {
+      const m = readMinutes(d);
+      return `<div class="${m >= S.read.target ? 'lvl2' : m ? 'lvl1' : ''} ${isT ? 'today' : ''} ${fut ? 'future' : ''}">${parse(d).getDate()}</div>`;
+    })}<div class="small muted" style="margin-top:8px">Halvány: olvastál · erős: megvan a napi ${S.read.target} perc</div></div>
+    <h2>Olvasási napló</h2><div class="card list">${list.length ? list.slice(0, 50).map(x => `<div class="item" onclick="openReadForm('${x.id}')" style="cursor:pointer">
+      <div><b>${x.min} perc</b>${x.pages ? ` <span class="small muted">· ${x.pages} oldal</span>` : ''}<div class="small muted">${fmtDateLong(x.date)}${x.book ? ' · ' + esc(bTitle(x.book)) : ''}</div>${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</div></div>`).join('')
+      : '<div class="small muted">Még nincs bejegyzés. Napi 30 perc és egy év alatt kb. 15-20 könyv is összejön!</div>'}</div>
+    <h2>Napi cél</h2><div class="card"><div class="chips">${[15, 20, 30, 45, 60].map(m => `<button class="chip ${S.read.target === m ? 'on' : ''}" onclick="S.read.target=${m};save();render()">${m} perc</button>`).join('')}</div></div>`;
+}
+function bookOptions(sel) {
+  return `<option value="">– nincs megadva –</option>` + S.read.books.filter(b => !b.done || b.id === sel).map(b => `<option value="${b.id}" ${b.id === sel ? 'selected' : ''}>${esc(b.title)}</option>`).join('');
+}
+function openBookForm(id) {
+  const b = id ? S.read.books.find(x => x.id === id) : { title: '', author: '', pages: '', done: false };
+  openSheet(`<h2 style="margin-top:0">${id ? 'Könyv szerkesztése' : 'Új könyv'}</h2>
+    <label>Cím</label><input id="bTitle" value="${esc(b.title)}" placeholder="pl. Atomic Habits">
+    <div class="grid2"><div><label>Szerző</label><input id="bAuthor" value="${esc(b.author)}"></div>
+    <div><label>Oldalszám</label><input id="bPages" inputmode="numeric" value="${b.pages || ''}"></div></div>
+    <div class="toggle"><b>Most ezt olvasom</b><input type="checkbox" id="bCur" ${!id || S.read.current === id ? 'checked' : ''}></div>
+    <div class="toggle"><b>Kiolvastam</b><input type="checkbox" id="bDone" ${b.done ? 'checked' : ''}></div>
+    <button class="btn primary" style="margin-top:14px" onclick="saveBook('${id || ''}')">Mentés</button>
+    ${id ? `<button class="btn bad" style="margin-top:8px" onclick="delBook('${id}')">Törlés</button>` : ''}`);
+}
+function saveBook(id) {
+  const title = $('#bTitle').value.trim();
+  if (!title) { toast('Add meg a címet'); return; }
+  const b = { id: id || uid(), title, author: $('#bAuthor').value.trim(), pages: parseInt($('#bPages').value, 10) || 0, done: $('#bDone').checked };
+  if (id) S.read.books = S.read.books.map(x => x.id === id ? b : x); else S.read.books.push(b);
+  if ($('#bCur').checked && !b.done) S.read.current = b.id;
+  else if (S.read.current === b.id) S.read.current = null;
+  save(); closeSheet(); render();
+  if (b.done) toast('🎉 Gratulálok, kiolvastad!');
+}
+function delBook(id) {
+  if (!confirm('Törlöd a könyvet? A naplóbejegyzések megmaradnak.')) return;
+  S.read.books = S.read.books.filter(b => b.id !== id);
+  if (S.read.current === id) S.read.current = null;
+  save(); closeSheet(); render();
+}
+function openReadForm(id, preset = {}) {
+  const x = id ? S.read.sessions.find(s => s.id === id) : { date: today(), min: S.read.target, pages: '', book: S.read.current || '', note: '', ...preset };
+  openSheet(`<h2 style="margin-top:0">${id ? 'Olvasás szerkesztése' : 'Olvasás rögzítése'}</h2>
+    <div class="grid2"><div><label>Dátum</label><input type="date" id="rDate" value="${x.date}"></div>
+    <div><label>Időtartam (perc)</label><input id="rMin" inputmode="numeric" value="${x.min}"></div></div>
+    <div class="grid2"><div><label>Könyv</label><select id="rBook">${bookOptions(x.book)}</select></div>
+    <div><label>Elolvasott oldalak</label><input id="rPages" inputmode="numeric" value="${x.pages || ''}" placeholder="pl. 25"></div></div>
+    <label>Jegyzet: mi maradt meg belőle?</label><textarea id="rNote" placeholder="Egy gondolat, idézet vagy tanulság">${esc(x.note)}</textarea>
+    <button class="btn primary" style="margin-top:14px" onclick="saveRead('${id || ''}')">Mentés</button>
+    ${id ? `<button class="btn bad" style="margin-top:8px" onclick="delRead('${id}')">Törlés</button>` : ''}`);
+}
+function saveRead(id) {
+  const min = parseInt($('#rMin').value, 10);
+  if (!(min > 0)) { toast('Add meg a perceket'); return; }
+  const x = { id: id || uid(), date: $('#rDate').value || today(), min, pages: parseInt($('#rPages').value, 10) || 0, book: $('#rBook').value || null, note: $('#rNote').value.trim() };
+  if (id) S.read.sessions = S.read.sessions.map(s => s.id === id ? x : s); else S.read.sessions.push(x);
+  save(); closeSheet(); render();
+  toast(readMinutes(today()) >= S.read.target ? '📚 Megvan a mai olvasás!' : '📖 Elmentve');
+}
+function delRead(id) {
+  if (!confirm('Törlöd ezt a bejegyzést?')) return;
+  S.read.sessions = S.read.sessions.filter(s => s.id !== id); save(); closeSheet(); render();
+}
+// Stopper: felfelé számol, a napi cél elérésekor csenget
+function openReadTimer() {
+  const goal = Math.max(1, S.read.target - readMinutes(today())) * 60;
+  let acc = 0, startAt = null, rang = false;
+  const book = curBook();
+  openSheet(`<h2 style="margin-top:0">📖 Olvasás</h2>
+    <p class="small muted">${book ? `<b>${esc(book.title)}</b> · ` : ''}Tedd le a telefont magad mellé, és csak olvass. Csengetek, ha megvan a mai ${S.read.target} perc.</p>
+    <div class="timer"><div class="ring"><svg width="220" height="220"><circle cx="110" cy="110" r="100" stroke="#2a2c37" stroke-width="10" fill="none"/>
+    <circle id="rArc" cx="110" cy="110" r="100" stroke="url(#rg)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
+    <defs><linearGradient id="rg"><stop offset="0" stop-color="#8b6cff"/><stop offset="1" stop-color="#ff5ca8"/></linearGradient></defs></svg>
+    <div class="time" id="rTime">0:00</div></div><div class="small muted" id="rLeft">Még ${Math.round(goal / 60)} perc a mai célig</div></div>
+    <div class="btns"><button class="btn primary" id="rGo">▶ Indítás</button><button class="btn" id="rStop">Befejezés</button></div>`, () => {
+    const elapsed = () => acc + (startAt ? (Date.now() - startAt) / 1000 : 0);
+    const show = () => {
+      const e = elapsed();
+      $('#rTime').textContent = fmtDur(e);
+      $('#rArc').setAttribute('stroke-dashoffset', 628.3 * (1 - Math.min(1, e / goal)));
+      $('#rLeft').textContent = e >= goal ? '🏆 Megvan a mai cél! Olvashatsz tovább is.' : `Még ${Math.ceil((goal - e) / 60)} perc a mai célig`;
+      if (e >= goal && !rang) { rang = true; bell(); }
+    };
+    $('#rGo').onclick = async () => {
+      if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      if (startAt) { acc = elapsed(); startAt = null; clearInterval(readTick); $('#rGo').textContent = '▶ Folytatás'; return; }
+      startAt = Date.now(); $('#rGo').textContent = '❚❚ Szünet';
+      try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {}
+      readTick = setInterval(show, 250);
+    };
+    $('#rStop').onclick = () => {
+      const min = Math.round(elapsed() / 60);
+      stopTimers();
+      if (min > 0) openReadForm(null, { min }); else closeSheet();
+    };
   });
 }
 
