@@ -18,4 +18,4 @@ Az adatok csak a telefonod böngészőjében tárolódnak (`localStorage`). A �
 
 ## Felépítés
 
-Sima HTML/CSS/JS, nincs build lépés: `index.html`, `styles.css`, `app.js` (minden logika, az edzésterv-generátor is), `sw.js` (offline működés).
+Sima HTML/CSS/JS, nincs build lépés: `index.html`, `styles.css`, `app.js` (minden logika, az edzésterv-generátor is), `guided.js` (vezetett meditációk szövegei és lejátszója), `sw.js` (offline működés).
