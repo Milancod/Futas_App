@@ -1,17 +1,15 @@
 {
-  "name": "Maratonnapló – futáskövető",
-  "short_name": "Maratonnapló",
+  "name": "Peace of Mind – maraton, nikotinmentesség, meditáció",
+  "short_name": "Peace of Mind",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0c0f15",
-  "theme_color": "#10131a",
-  "description": "Futásnapló és fejlődéskövetés a 2027. októberi maratonig.",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "description": "Maratoni edzésterv, nikotinmentes napok és meditációs napló egy helyen.",
   "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
   ]
 }
