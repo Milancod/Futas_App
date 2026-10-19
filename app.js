@@ -339,7 +339,7 @@ function viewToday() {
     <div class="row between"><div><b>${medMin >= S.med.target ? '🧘 Megvan a mai meditáció!' : `Mai cél: ${S.med.target} perc`}</b>
     <div class="small muted">Ma eddig: ${medMin} perc · Javaslat: ${sug.name}</div></div></div>
     <div class="bar" style="margin-top:10px"><i style="width:${Math.min(100, medMin / S.med.target * 100)}%"></i></div>
-    <div class="btns"><button class="btn primary" onclick="openMedTimer()">▶ Indítás</button><button class="btn" onclick="openMedForm()">Rögzítés</button></div></div>`;
+    <div class="btns"><button class="btn primary" onclick="openGuided(guidedPick())">🎧 Vezetett</button><button class="btn" onclick="openMedTimer()">⏱ Csendes</button></div></div>`;
 
   // Olvasás
   const readMin = readMinutes(t), book = curBook();
@@ -836,29 +836,28 @@ function delMed(id) {
   S.med.sessions = S.med.sessions.filter(s => s.id !== id); save(); closeSheet(); render();
 }
 
-/* Vezetett meditációk: magyar YouTube-keresések témánként + saját kedvencek */
-const GUIDED = [
-  ['🌅', 'Reggeli ébredés', 'reggeli vezetett meditáció magyarul', '5-10 perc'],
-  ['😮‍💨', 'Stressz és szorongás oldása', 'vezetett meditáció stressz szorongás oldására magyarul', '10-15 perc'],
-  ['🌬️', 'Légzőgyakorlat', 'vezetett légzőgyakorlat meditáció magyarul', '5-10 perc'],
-  ['🧍', 'Testpásztázás', 'testpásztázás vezetett meditáció magyarul', '10-20 perc'],
-  ['🚭', 'Leszokás, sóvárgás kezelése', 'vezetett meditáció leszokás sóvárgás függőség magyarul', '10 perc'],
-  ['💪', 'Önbizalom és motiváció', 'vezetett meditáció önbizalom motiváció magyarul', '10 perc'],
-  ['🏃', 'Futás utáni relaxáció', 'jóga nidra relaxáció magyarul', '15-30 perc'],
-  ['🌙', 'Elalvás előtt', 'elalvást segítő vezetett meditáció magyarul', '15-30 perc']
-];
+/* Vezetett meditációk: az appon belül (guided.js), plusz YouTube és saját kedvencek */
 const ytSearch = q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+function guidedPick() {
+  const h = new Date().getHours();
+  if (h < 11) return 'morning';
+  if (h >= 21) return 'sleep';
+  const mid = G_THEMES.filter(t => t.key !== 'morning' && t.key !== 'sleep');
+  return mid[dayIndex(today()) % mid.length].key;
+}
 function guidedHtml() {
   const favs = S.med.favs || [];
   return `<h2>Vezetett meditációk</h2><div class="card list">
-    <div class="small muted" style="margin-bottom:4px">Koppints egy témára: megnyílnak a magyar nyelvű vezetett meditációk a YouTube-on. Ha találsz egy jót, mentsd el a kedvenceid közé.</div>
-    ${GUIDED.map(([ic, name, q, len]) => `<a class="item" href="${ytSearch(q)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-      <div class="row"><div style="font-size:22px">${ic}</div><div><b>${name}</b><div class="small muted">${len}</div></div></div><span class="muted">↗</span></a>`).join('')}</div>
+    <div class="small muted" style="margin-bottom:4px">Magyar hangon vezetlek végig, az appon belül. Minden témában naponta más gyakorlat jön.</div>
+    ${G_THEMES.map(t => `<div class="item" onclick="openGuided('${t.key}')" style="cursor:pointer">
+      <div class="row"><div style="font-size:22px">${t.icon}</div><div><b>${t.name}</b><div class="small muted">Ma: ${esc(guidedToday(t).title)} · ${t.len} perc</div></div></div><span class="pill">▶</span></div>`).join('')}</div>
+    <details class="card"><summary style="cursor:pointer"><b>Még több a YouTube-on ↗</b></summary><div class="list" style="margin-top:6px">
+    ${G_THEMES.map(t => `<a class="item" href="${ytSearch(t.yt)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span>${t.icon} ${t.name}</span><span class="muted">↗</span></a>`).join('')}</div></details>
     <h2>Kedvenc meditációim</h2><div class="card list">
     ${favs.length ? favs.map(f => `<div class="item"><a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;flex:1"><b>${esc(f.title)}</b><div class="small muted">Megnyitás ↗</div></a>
       <button class="btn sm" onclick="openMedForm(null,{type:'Vezetett meditáció',note:${esc(JSON.stringify(f.title))}})">✓ Kész</button>
       <button class="btn sm" onclick="delFav('${f.id}')">×</button></div>`).join('')
-      : '<div class="small muted">Még nincs kedvenced. A YouTube-on a Megosztás → Link másolása gombbal kimásolhatod a videó linkjét.</div>'}
+      : '<div class="small muted">Ha a YouTube-on találsz egy jót, a Megosztás → Link másolása gombbal mentheted ide.</div>'}
     <button class="btn ghost" style="margin-top:10px" onclick="openFavForm()">+ Kedvenc hozzáadása</button></div>`;
 }
 function openFavForm() {
@@ -880,6 +879,7 @@ function delFav(id) {
 /* Meditációs időzítő */
 let medTick = null, wakeLock = null, audio = null;
 function stopTimers() {
+  if (typeof gpStop === 'function') gpStop();
   clearInterval(medTick); medTick = null;
   clearInterval(readTick); readTick = null;
   clearTimeout(breathTimer); breathTimer = null;
