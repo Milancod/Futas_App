@@ -58,7 +58,8 @@ function defaults() {
     runs: [],   // rögzített futások
     nic: { days: {}, cost: 0, cravings: {}, notes: {}, lastUse: null, kind: 'pouch', perDay: 10 },
     med: { target: 10, sessions: [], favs: [] },
-    read: { target: 30, sessions: [], books: [], current: null }
+    read: { target: 30, sessions: [], books: [], current: null },
+    water: { days: {}, target: 0 }
   };
 }
 let S = load();
@@ -68,7 +69,7 @@ function load() {
     const x = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (x) return {
       settings: { ...d.settings, ...x.settings }, ov: x.ov || {}, runs: x.runs || [],
-      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }, read: { ...d.read, ...x.read }
+      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }, read: { ...d.read, ...x.read }, water: { ...d.water, ...x.water }
     };
   } catch (e) {}
   return d;
@@ -341,6 +342,8 @@ function viewToday() {
     <div class="bar" style="margin-top:10px"><i style="width:${Math.min(100, medMin / S.med.target * 100)}%"></i></div>
     <div class="btns"><button class="btn primary" onclick="openGuided(guidedPick())">🎧 Vezetett</button><button class="btn" onclick="openMedTimer()">⏱ Csendes</button></div></div>`;
 
+  html += waterCard();
+
   // Olvasás
   const readMin = readMinutes(t), book = curBook();
   html += `<h2>Olvasás</h2><div class="card">
@@ -358,14 +361,16 @@ function viewToday() {
     const nd = S.nic.days[d];
     const md = S.med.sessions.some(x => x.date === d);
     const rd = readMinutes(d) >= S.read.target;
+    const wd = waterMl(d) >= waterTarget(d);
     html += `<div style="padding:6px 0;border-radius:12px;${d === t ? 'background:var(--card2)' : ''}">
       <div class="small ${d === t ? '' : 'muted'}"><b>${DAY_SHORT[i]}</b></div>
       <div style="font-size:15px;margin-top:4px">${ran ? '✅' : ws.length ? `<span class="c-${COLOR[ws[0].type]}">●</span>` : '·'}</div>
       <div style="font-size:11px">${nd === 'clean' ? '🚭' : nd === 'used' ? '•' : '&nbsp;'}</div>
       <div style="font-size:11px">${md ? '🧘' : '&nbsp;'}</div>
-      <div style="font-size:11px">${rd ? '📚' : '&nbsp;'}</div></div>`;
+      <div style="font-size:11px">${rd ? '📚' : '&nbsp;'}</div>
+      <div style="font-size:11px">${wd ? '💧' : '&nbsp;'}</div></div>`;
   }
-  html += `</div><div class="small muted" style="margin-top:8px">● tervezett futás · ✅ lefutva · 🚭 nikotinmentes · 🧘 meditáltál · 📚 meglett a napi olvasás</div></div>`;
+  html += `</div><div class="small muted" style="margin-top:8px">● tervezett futás · ✅ lefutva · 🚭 nikotinmentes · 🧘 meditáltál · 📚 meglett a napi olvasás · 💧 megvolt a víz</div></div>`;
   return html;
 }
 
@@ -623,18 +628,27 @@ function calendar(weeks, cellFn) {
 const NIC_KINDS = { pouch: ['Nikotinpárna / snüssz', 'párna'], vape: ['Vape / e-cigi', 'slukk-alkalom'], cig: ['Cigaretta', 'szál cigi'], other: ['Egyéb', 'adag'] };
 // [óra, szöveg, mely formákra igaz (üres = mindre)]
 const NIC_HEALTH = [
+  [1 / 6, 'Az utolsó adag után a nikotin már bomlik a szervezetedben.'],
   [1 / 3, 'A pulzusod és a vérnyomásod visszatér a nikotin előtti szintre.'],
   [2, 'A nikotin szintje a véredben a felére csökkent.'],
   [12, 'A vér szén-monoxid-szintje normalizálódik, több oxigén jut az izmaidhoz.', ['cig']],
+  [8, 'A vér oxigénszintje normalizálódik.', ['cig']],
   [24, 'A nikotin nagy része kiürült, megszűnnek a nikotin okozta adrenalin-löketek.'],
   [48, 'Az íz- és szaglóidegek regenerálódni kezdenek, jobban érzed az ízeket.', ['cig', 'vape']],
   [72, 'A szervezeted nikotinmentes. Az elvonási tünetek csúcsa után innen enyhülnek.'],
+  [24 * 7, 'Mélyebb az alvásod: a nikotin már nem ébreszt fel és nem zavarja az álmot.'],
+  [24 * 7, 'Az ínyed vérellátása javulni kezd.', ['pouch']],
   [24 * 14, 'Az ínyed és a szájnyálkahártyád gyógyulni kezd, csökken az irritáció.', ['pouch']],
   [24 * 14, 'Javul a vérkeringésed, az ereid kevésbé szűkülnek: a futás könnyebbnek érződik.'],
+  [24 * 21, 'Az agyad jutalmazó (dopamin) rendszere egyensúlyba kezd kerülni, kevesebb a hangulatingadozás.'],
   [24 * 30, 'A nikotinreceptorok száma normalizálódik, a sóvárgás ritka és gyenge.'],
   [24 * 90, 'A tüdőfunkciód javul, kevesebb a köhögés és a légszomj, nő az állóképességed.', ['cig', 'vape']],
   [24 * 90, 'Stabilabb a hangulatod és az alvásod, kevesebb a nap közbeni ingadozás.'],
-  [24 * 365, 'A szív- és érrendszeri betegségek kockázata jelentősen csökkent.']
+  [24 * 180, 'A nyugalmi pulzusod és a vérnyomásod tartósan alacsonyabb (a futással együtt még jobban).'],
+  [24 * 270, 'A tüdő csillószőrei regenerálódnak: kevesebb a köhögés és a légúti fertőzés.', ['cig', 'vape']],
+  [24 * 365, 'A szív- és érrendszeri betegségek kockázata jelentősen csökkent.'],
+  [24 * 365 * 5, 'A stroke kockázata a nemdohányzókéhoz közelít.', ['cig']],
+  [24 * 365 * 10, 'A tüdőrák kockázata kb. a felére csökken a dohányzókéhoz képest.', ['cig']]
 ];
 function nicSince() {
   if (S.nic.lastUse) return S.nic.lastUse;
@@ -654,7 +668,20 @@ function fmtHours(h) {
   if (h < 48) return Math.round(h) + ' óra';
   if (h < 24 * 30) return Math.round(h / 24) + ' nap';
   if (h < 24 * 365) return Math.round(h / 24 / 30) + ' hónap';
-  return '1 év';
+  return Math.round(h / 24 / 365) + ' év';
+}
+// Becslések: mennyi nikotin, szívverés és idő maradt el (nagyságrendi, tájékoztató)
+const NIC_MG = { pouch: 8, vape: 1, cig: 1, other: 2 };       // felszívódó mg / adag
+const NIC_MIN = { vape: 10, cig: 6 };   // egy alkalom ideje percben
+function nicExtra(hrs) {
+  const doses = hrs / 24 * (S.nic.perDay || 0);
+  const mg = doses * (S.nic.mg || NIC_MG[S.nic.kind] || 2);
+  const beats = doses * 40 * 8;   // kb. 40 percig kb. 8-cal magasabb pulzus adagonként
+  const minutes = doses * (NIC_MIN[S.nic.kind] || 10);
+  const last30 = Array.from({ length: 30 }, (_, i) => S.nic.days[iso(addDays(new Date(), -i))]);
+  const marked = last30.filter(Boolean).length;
+  const cleanPct = marked ? Math.round(last30.filter(v => v === 'clean').length / marked * 100) : null;
+  return { mg, beats, minutes, cleanPct };
 }
 function nicHealthHtml() {
   const since = nicSince();
@@ -675,6 +702,20 @@ function nicHealthHtml() {
     <div class="small" style="color:#d8cffc">${done} / ${items.length} egészségügyi előny elérve</div></div>
     <div class="grid2"><div class="stat"><b>${avoided.toLocaleString('hu-HU')}</b><span>elkerült ${unit[1]}</span></div>
     <div class="stat"><b>${money ? money.toLocaleString('hu-HU') + ' Ft' : '–'}</b><span>megspórolva${S.nic.cost ? '' : ' (add meg lent az árat)'}</span></div></div>
+    ${(() => {
+      const x = nicExtra(hrs), nf = v => Math.round(v).toLocaleString('hu-HU');
+      const next = items.find(i => hrs < i[0]);
+      return `<h2>Egészségügyi mutatók</h2><div class="grid2">
+        <div class="stat"><b>${nf(x.mg)} mg</b><span>nikotin nem jutott a szervezetedbe</span></div>
+        <div class="stat"><b>${nf(x.beats)}</b><span>szívdobbanással kevesebb terhelés (becslés)</span></div>
+        ${['cig', 'vape'].includes(S.nic.kind)
+          ? `<div class="stat"><b>${x.minutes >= 120 ? nf(x.minutes / 60) + ' óra' : nf(x.minutes) + ' perc'}</b><span>idő, amit nem a nikotinra fordítottál</span></div>`
+          : `<div class="stat"><b>${fmtKm(S.runs.filter(r => parse(r.date).getTime() >= since - 864e5).reduce((a, r) => a + r.km, 0))} km</b><span>futás nikotinmentesen</span></div>`}
+        <div class="stat"><b>${x.cleanPct === null ? '–' : x.cleanPct + '%'}</b><span>tiszta nap az elmúlt 30 jelölt napból</span></div>
+        <div class="stat"><b>${Math.min(100, Math.round(hrs / (24 * 90) * 100))}%</b><span>a 3 hónapos teljes regenerációból</span></div>
+        <div class="stat"><b>${next ? fmtHours(next[0] - hrs) : '🏆'}</b><span>${next ? 'a következő előnyig' : 'minden előny megvan'}</span></div></div>
+        <div class="small muted" style="margin-top:6px">A becslések a napi mennyiségeden alapulnak (lent állíthatod).</div>`;
+    })()}
     <h2>Mit tettél az egészségedért</h2><div class="card">${items.map(([h, txt]) => {
       const pct = Math.min(100, hrs / h * 100), ok = pct >= 100;
       return `<div class="milestone ${ok ? 'reached' : ''}"><div class="dot">${ok ? '✓' : ''}</div><div style="flex:1">
@@ -728,7 +769,8 @@ function viewNic() {
     <select onchange="S.nic.kind=this.value;save();render()">${Object.entries(NIC_KINDS).map(([k, v]) => `<option value="${k}" ${S.nic.kind === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
     <div class="grid2"><div><label>Napi mennyiség (${(NIC_KINDS[S.nic.kind] || NIC_KINDS.other)[1]})</label>
     <input inputmode="numeric" value="${S.nic.perDay || ''}" placeholder="pl. 10" onchange="S.nic.perDay=+this.value||0;save();render()"></div>
-    <div><label>Napi költség (Ft)</label><input inputmode="numeric" value="${S.nic.cost || ''}" placeholder="pl. 1500" onchange="S.nic.cost=+this.value||0;save();render()"></div></div></div>`;
+    <div><label>Napi költség (Ft)</label><input inputmode="numeric" value="${S.nic.cost || ''}" placeholder="pl. 1500" onchange="S.nic.cost=+this.value||0;save();render()"></div></div>
+    <label>Nikotin egy adagban (mg, ami felszívódik)</label><input inputmode="decimal" value="${S.nic.mg || ''}" placeholder="alapból ${NIC_MG[S.nic.kind] || 2} mg" onchange="S.nic.mg=parseFloat(this.value.replace(',','.'))||0;save();render()"></div>`;
   return html;
 }
 function cycleNic(d) {
@@ -942,6 +984,69 @@ function openMedTimer(type) {
     };
     $('#tStop').onclick = () => { if (running) left = (endAt - Date.now()) / 1000; finish(false); };
   });
+}
+
+/* ---------- VÍZ ---------- */
+// Alap cél: 35 ml/testsúlykg, futónapon +500 ml
+const waterMl = date => (S.water.days[date] || []).reduce((a, x) => a + x.ml, 0);
+function waterAuto() { return Math.round(S.settings.weight * 35 / 100) * 100; }
+function waterTarget(date) {
+  const base = S.water.target || waterAuto();
+  return base + (workoutsOn(date).some(w => !w.skipped) || S.runs.some(r => r.date === date) ? 500 : 0);
+}
+const fmtL = ml => (Math.round(ml / 100) / 10).toLocaleString('hu-HU', { minimumFractionDigits: 1 }) + ' l';
+function waterStreak() {
+  let d = new Date(), n = 0;
+  if (waterMl(iso(d)) < waterTarget(iso(d))) d = addDays(d, -1);
+  while (waterMl(iso(d)) >= waterTarget(iso(d))) { n++; d = addDays(d, -1); }
+  return n;
+}
+function waterCard() {
+  const t = today(), ml = waterMl(t), goal = waterTarget(t);
+  const glasses = Math.ceil(goal / 250), full = Math.floor(ml / 250);
+  const run = goal > (S.water.target || waterAuto());
+  return `<h2>Vízfogyasztás</h2><div class="card">
+    <div class="row between"><div><b>${ml >= goal ? '💧 Megvan a mai víz!' : `${fmtL(ml)} / ${fmtL(goal)}`}</b>
+    <div class="small muted">${run ? 'Futónap: +0,5 l a cél · ' : ''}${waterStreak()} napos sorozat</div></div>
+    <button class="btn sm" onclick="openWater()">📊</button></div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin:10px 0">${Array.from({ length: glasses }, (_, i) => `<span style="font-size:20px;opacity:${i < full ? 1 : .25}">💧</span>`).join('')}</div>
+    <div class="bar"><i style="width:${Math.min(100, ml / goal * 100)}%;background:linear-gradient(90deg,#4da3ff,#3ddcd0)"></i></div>
+    <div class="btns">${[[250, 'Pohár'], [500, 'Palack'], [750, 'Nagy']].map(([m, l]) => `<button class="btn" onclick="addWater(${m})"><b>+${m}</b><div class="small muted">${l}</div></button>`).join('')}</div>
+    ${ml ? `<button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="undoWater()">↶ Utolsó visszavonása</button>` : ''}</div>`;
+}
+function addWater(ml) {
+  const t = today(), before = waterMl(t);
+  (S.water.days[t] = S.water.days[t] || []).push({ t: Date.now(), ml });
+  save(); render();
+  const after = waterMl(t), goal = waterTarget(t);
+  toast(before < goal && after >= goal ? '🎉 Megvan a mai vízcél!' : `💧 +${ml} ml · ${fmtL(after)}`);
+}
+function undoWater() {
+  const arr = S.water.days[today()];
+  if (arr && arr.length) { arr.pop(); save(); render(); }
+}
+function openWater() {
+  const days = Array.from({ length: 14 }, (_, i) => iso(addDays(new Date(), i - 13)));
+  const max = Math.max(...days.map(d => Math.max(waterMl(d), waterTarget(d))), 1);
+  const bw = 100 / 14;
+  const bars = days.map((d, i) => {
+    const ml = waterMl(d), g = waterTarget(d), h = ml / max * 110, gy = 120 - g / max * 110;
+    return `<rect x="${i * bw + bw * .15}%" y="${120 - h}" width="${bw * .7}%" height="${h}" rx="3" fill="${ml >= g ? '#3ddcd0' : '#4da3ff'}"/>
+      <rect x="${i * bw + bw * .1}%" y="${gy}" width="${bw * .8}%" height="2" fill="#9a9cab"/>
+      <text x="${i * bw + bw / 2}%" y="136" fill="#9a9cab" font-size="9" text-anchor="middle">${parse(d).getDate()}</text>`;
+  }).join('');
+  const hit = days.filter(d => waterMl(d) >= waterTarget(d)).length;
+  const avg = days.reduce((a, d) => a + waterMl(d), 0) / 14;
+  openSheet(`<h2 style="margin-top:0">💧 Vízfogyasztás</h2>
+    <div class="grid3"><div class="stat"><b>${waterStreak()}</b><span>napos sorozat</span></div>
+    <div class="stat"><b>${fmtL(avg)}</b><span>napi átlag (14 nap)</span></div>
+    <div class="stat"><b>${hit}/14</b><span>teljesített nap</span></div></div>
+    <div class="card" style="background:var(--card2);margin-top:12px"><svg width="100%" height="140">${bars}</svg>
+    <div class="small muted">Oszlop: megivott víz · szürke vonal: napi cél</div></div>
+    <label>Napi alap cél (ml)</label><input id="wGoal" inputmode="numeric" value="${S.water.target || ''}" placeholder="automatikus: ${waterAuto()} ml (35 ml/kg)">
+    <p class="small muted">Futónapokon automatikusan +500 ml kerül a célhoz. Edzés közben 60 perc felett óránként kb. 0,5 l-t igyál.</p>
+    <button class="btn primary" onclick="S.water.target=parseInt($('#wGoal').value,10)||0;save();closeSheet();render();toast('Cél mentve')">Mentés</button>
+    <label>Mai bejegyzések</label><div class="list">${(S.water.days[today()] || []).map(x => { const d = new Date(x.t); return `<div class="item"><span>${pad(d.getHours())}:${pad(d.getMinutes())}</span><b>${x.ml} ml</b></div>`; }).join('') || '<div class="small muted">Ma még nincs bejegyzés.</div>'}</div>`);
 }
 
 /* ---------- OLVASÁS ---------- */
