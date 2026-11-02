@@ -277,6 +277,22 @@ function closeSheet(instant) {
 }
 
 function render() {
+  try { renderView(); } catch (e) { showCrash(e); }
+}
+// Ha valami elromlik, ne fehér képernyő legyen, hanem látszódjon a hiba és a kiút
+function showCrash(e) {
+  const msg = (e && (e.stack || e.message)) || String(e);
+  const m = document.getElementById('main');
+  if (!m) return;
+  m.innerHTML = `<div class="card" style="margin-top:12px"><h2 style="margin-top:0">Hiba történt 😕</h2>
+    <p class="small">Küldd el ezt a szöveget (képernyőkép is jó), és kijavítom:</p>
+    <pre style="white-space:pre-wrap;font-size:11px;background:var(--card2);padding:10px;border-radius:10px;max-height:200px;overflow:auto">${esc(msg)}</pre>
+    <div class="btns"><button class="btn primary" onclick="location.reload()">Újratöltés</button><button class="btn" onclick="exportData()">Adatok mentése</button></div>
+    <button class="btn bad" style="margin-top:8px" onclick="if(confirm('Biztosan törlöd az összes adatot? Előbb mentsd el őket!')){localStorage.removeItem(KEY);location.reload()}">Alaphelyzet</button></div>`;
+}
+// Globális hiba csak akkor írja felül a képernyőt, ha üres maradt
+window.addEventListener('error', e => { if (!document.getElementById('main')?.children.length) showCrash(e.error || e.message); });
+function renderView() {
   buildPlan();
   $('#title').textContent = TITLES[TAB];
   $('#subtitle').textContent = fmtDateLong(today());
