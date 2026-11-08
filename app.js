@@ -59,7 +59,8 @@ function defaults() {
     nic: { days: {}, cost: 0, cravings: {}, notes: {}, lastUse: null, kind: 'pouch', perDay: 10 },
     med: { target: 10, sessions: [], favs: [] },
     read: { target: 30, sessions: [], books: [], current: null },
-    water: { days: {}, target: 0 }
+    water: { days: {}, target: 0 },
+    peace: { entries: {} }
   };
 }
 let S = load();
@@ -69,7 +70,7 @@ function load() {
     const x = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (x) return {
       settings: { ...d.settings, ...x.settings }, ov: x.ov || {}, runs: x.runs || [],
-      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }, read: { ...d.read, ...x.read }, water: { ...d.water, ...x.water }
+      nic: { ...d.nic, ...x.nic }, med: { ...d.med, ...x.med }, read: { ...d.read, ...x.read }, water: { ...d.water, ...x.water }, peace: { ...d.peace, ...x.peace }
     };
   } catch (e) {}
   return d;
@@ -247,7 +248,7 @@ function weekDone(week) {
 /* ---------- UI alapok ---------- */
 let TAB = 'today';
 let planWeek = null;
-const TITLES = { today: 'Ma', plan: 'Edzésterv', runs: 'Futások', nic: 'Nikotinmentesen', med: 'Meditáció', read: 'Olvasás' };
+const TITLES = { today: 'Ma', plan: 'Edzésterv', runs: 'Futások', nic: 'Nikotinmentesen', med: 'Belső béke', read: 'Olvasás' };
 
 function toast(msg) {
   const t = document.createElement('div');
@@ -358,6 +359,7 @@ function viewToday() {
     <div class="bar" style="margin-top:10px"><i style="width:${Math.min(100, medMin / S.med.target * 100)}%"></i></div>
     <div class="btns"><button class="btn primary" onclick="openGuided(guidedPick())">🎧 Vezetett</button><button class="btn" onclick="openMedTimer()">⏱ Csendes</button></div></div>`;
 
+  html += peaceTodayCard();
   html += waterCard();
 
   // Olvasás
@@ -854,9 +856,7 @@ function viewMed() {
   const total = S.med.sessions.reduce((a, x) => a + x.min, 0);
   const todayMin = S.med.sessions.filter(x => x.date === t).reduce((a, x) => a + x.min, 0);
   const list = [...S.med.sessions].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-  return `<div class="card hero" style="margin-top:12px"><div class="small" style="color:#d8cffc">A mai javaslat</div>
-    <h2 style="margin:4px 0">🧘 ${sug.name}</h2><div class="small">${sug.guide}</div>
-    <div class="btns"><button class="btn primary" onclick="openMedTimer('${sug.name}')">▶ ${S.med.target} perc indítása</button></div></div>
+  return peaceHtml() + `<h2>Meditációk</h2>
     <div class="grid3"><div class="stat"><b>${todayMin}/${S.med.target}</b><span>mai perc</span></div>
     <div class="stat"><b>${medStreak()}</b><span>napos sorozat</span></div>
     <div class="stat"><b>${total}</b><span>összes perc</span></div></div>
@@ -957,10 +957,10 @@ function bell() {
   } catch (e) {}
   navigator.vibrate && navigator.vibrate([300, 200, 300]);
 }
-function openMedTimer(type) {
+function openMedTimer(type, mins) {
   type = type || medSuggestion(today()).name;
   const guide = (MED_TYPES.find(m => m[0] === type) || MED_TYPES[0])[1];
-  let minutes = S.med.target, endAt = null, left = minutes * 60, running = false;
+  let minutes = mins || S.med.target, endAt = null, left = minutes * 60, running = false;
   openSheet(`<h2 style="margin-top:0">🧘 ${esc(type)}</h2><p class="small muted">${guide}</p>
     <div class="chips" id="tChips" style="justify-content:center">${[3, 5, 10, 15, 20, 30].map(m => `<button class="chip ${m === minutes ? 'on' : ''}" data-m="${m}">${m}'</button>`).join('')}</div>
     <div class="timer"><div class="ring"><svg width="220" height="220"><circle cx="110" cy="110" r="100" stroke="#2a2c37" stroke-width="10" fill="none"/>

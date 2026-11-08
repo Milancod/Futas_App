@@ -5,6 +5,7 @@ Telefonra optimalizált webapp (PWA) a testi és lelki fejlődéshez:
 - **Maratoni edzésterv** – heti bontású, a profilod alapján generált terv (alapozás → építkezés → csúcs → taper → verseny). Könnyű futás, rávezetők, fartlek, tempó, intervall, maratoni tempó és hosszú futás, személyre szabott tempókkal. Az edzéseket hosszú nyomással át lehet húzni másik napra, vagy a részleteknél kiválasztani az új napot. Minden edzésnél bekapcsolható a **futópad mód** (tempók km/h-ban).
 - **Futásnapló** – táv, idő, nehézség, jegyzet; heti terv vs. lefutott grafikon; CSV-export.
 - **Nikotinmentes napok** – napi jelölés, sorozat, mérföldkövek, megspórolt pénz, „Sóvárgás van” vezetett légzés.
+- **Belső béke** – 8 hetes, MBSR-ihlette program: napi meditáció, napló a nap kérdésével, 3 jó dolog, hangulat és stressz előtte/utána, fejlődési grafikonok.
 - **Meditáció** – napi cél, időzítő csengővel, napi javasolt gyakorlat, magyar vezetett meditációk (YouTube) és kedvencek, napló arról, mit meditáltál.
 - **Olvasás** – napi 30 perces cél, stopper, könyvek oldalszámmal, olvasási napló.
 
